@@ -1,5 +1,6 @@
 const Product = require("../models/product");
 const Cart = require("../models/cart");
+const Order = require("../models/order");
 
 exports.getProducts = (req, res, next) => {
   Product.findAll()
@@ -107,8 +108,10 @@ exports.postCart = (req, res, next) => {
       }
       return Product.findByPk(id);
     })
-    .then(product=>{
-      return fetchedCart.addProduct(product, {through: {quantity: newQuantity}});
+    .then((product) => {
+      return fetchedCart.addProduct(product, {
+        through: { quantity: newQuantity },
+      });
     })
     .then((result) => {
       res.redirect("/cart");
@@ -125,25 +128,80 @@ exports.postCart = (req, res, next) => {
 
 exports.deleteCartItem = (req, res, next) => {
   const id = parseInt(req.body.id);
-  
-  Product.findById(id, (product) => {
-    Cart.deleteProduct(id, product.price);
-    res.redirect("/cart");
-  });
+  req.user
+    .getCart()
+    .then((cart) => {
+      return cart.getProducts({ where: { id: id } });
+    })
+    .then((products) => {
+      let product = products[0];
+      return product.cartItem.destroy();
+    })
+    .then((result) => {
+      res.redirect("/cart");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+
+  // Product.findById(id, (product) => {
+  //   Cart.deleteProduct(id, product.price);
+  //   res.redirect("/cart");
+  // });
+};
+
+exports.postOrder = (req, res, next) => {
+  let products;
+  let fetchedCart;
+  req.user
+    .getCart()
+    .then((cart) => {
+      fetchedCart = cart;
+      return cart.getProducts();
+    })
+    .then((fetchedProducts) => {
+      products = fetchedProducts;
+      return req.user.createOrder();
+    })
+    .then((order) => {
+      return order.addProducts(
+        products.map((product) => {
+          product.orderItem = { quantity: product.cartItem.quantity };
+          return product;
+        })
+      );
+    })
+    .then((result) => {
+      return fetchedCart.setProducts(null);
+    })
+    .then((result) => {
+      res.redirect("/orders");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 };
 
 exports.getOrders = (req, res, next) => {
-  res.render("shop/orders", {
-    path: "/orders",
-    title: "Orders",
-  });
-};
-
-exports.getCheckOut = (req, res, next) => {
-  res.render("shop/checkout", {
-    path: "/checkout",
-    title: "Checkout",
-  });
+  //include here is used for eager loading but it not currently working so i have written
+  //alternate solution
+  req.user
+    .getOrders({ inclue: ["products"] })
+    .then((orders) => {
+      return Promise.all(orders.map(order=>{
+        return order.getProducts().then((products) => {
+          order.products = products;
+          return order;
+        });
+      }));    
+    })
+    .then((orders) => {
+      res.render("shop/orders", {
+        path: "/orders",
+        title: "Your Orders",
+        orders: orders,
+      });
+    });
 };
 
 // const Product = require("../models/product");
