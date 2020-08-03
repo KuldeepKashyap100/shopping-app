@@ -8,15 +8,18 @@ const adminRoutes = require("./routes/admin");
 const shopRouter = require("./routes/shop");
 const errorController = require("./controllers/error");
 //import the sequelize object created in database file
-const sequelize = require("./util/database");
+// const sequelize = require("./util/database");
 
-//import models for relation
-const Product = require("./models/product");
+//import models for assotiation
+// const Product = require("./models/product");
 const User = require("./models/user");
-const Cart = require("./models/cart");
-const CartItem = require("./models/cart-item");
-const Order = require("./models/order");
-const OrderItem = require("./models/order-item");
+// const Cart = require("./models/cart");
+// const CartItem = require("./models/cart-item");
+// const Order = require("./models/order");
+// const OrderItem = require("./models/order-item");
+
+const {mongoConnect} = require("./util/database");
+
 
 const app = express();
 
@@ -39,53 +42,65 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // to serve the static file stored at public folder
 app.use(express.static(path.join(__dirname, "public")));
 
+// app.use((req, res, next) => {
+//     User.findByPk(1).then(user=>{
+//         req.user = user;
+//         next();
+//     });
+// });
+
 app.use((req, res, next) => {
-    User.findByPk(1).then(user=>{
-        req.user = user;
-        next();
-    });
+  User.findById("5f243801bc6f9ffd27ab1cd1")
+  .then(user=>{
+    req.user = new User(user.userName, user.password, user.email, user._id, user.cart);
+    next();
+  })
 });
 
 app.use("/admin", adminRoutes.router);
-
 app.use(shopRouter);
 
 app.use(errorController.get404);
 
+mongoConnect((client)=>{
+  console.log(client);
+  app.listen(3000)
+});
+
 //sequelize relations
-Product.belongsTo(User, { constrains: true, onDelete: "CASCADE" });
-User.hasMany(Product);
+// Product.belongsTo(User, { constrains: true, onDelete: "CASCADE" });
+// User.hasMany(Product);
 
-Cart.belongsTo(User);
-User.hasOne(Cart);
+// Cart.belongsTo(User);
+// User.hasOne(Cart);
 
-Cart.belongsToMany(Product, {through: CartItem});
-Product.belongsToMany(Cart, {through: CartItem});
+// Cart.belongsToMany(Product, {through: CartItem});
+// Product.belongsToMany(Cart, {through: CartItem});
 
-Order.belongsTo(User);
-User.hasMany(Order);
+// Order.belongsTo(User);
+// User.hasMany(Order);
 
-Order.belongsToMany(Product, {through: OrderItem});
+// Order.belongsToMany(Product, {through: OrderItem});
 // Product.belongsToMany(Order, {through: OrderItem});
 
 // it will have a look at all the models(defined on the same sequelize object) defined and created tables for them.
-sequelize
-    // .sync({ force: true })
-  .sync()
-  .then(() => {
-    return User.findByPk(1);
-  })
-  .then((user) => {
-    if (!user)
-      return User.create({ userName: "Kuldeep", userEmail: "kul@gmail.com" });
-    return user;
-  })
-  .then((user) => {
-      return user.createCart();
-  })
-  .then(cart=>{
-    app.listen(3000);
-  })
-  .catch((err) => {
-    console.log(err);
-  });
+// sequelize
+//     // .sync({ force: true })
+//   .sync()
+//   .then(() => {
+//     return User.findByPk(1);
+//   })
+//   .then((user) => {
+//     if (!user)
+//       return User.create({ userName: "Kuldeep", userEmail: "kul@gmail.com" });
+//     return user;
+//   })
+//   .then((user) => {
+//       return user.createCart();
+//   })
+//   .then(cart=>{
+//     app.listen(3000);
+//   })
+//   .catch((err) => {
+//     console.log(err);
+//   });

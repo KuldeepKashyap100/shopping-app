@@ -1,37 +1,92 @@
 /**
+ * Using mongoclient to do data operations
+ */
+
+const mongodb = new require('mongodb');
+const { getDb } = require("../util/database");
+
+class Product {
+    constructor(title,imageURL,description,price, id, userId) {
+        this.title = title;
+        this.imageURL = imageURL;
+        this.description = description;
+        this.price = price;
+        this._id = id ? new mongodb.ObjectId(id): null;
+        this.userId = userId;
+    }
+    save(){
+        const db = getDb();
+        if(!this._id) {
+            return db.collection('products').insertOne(this)
+            .then(result=>{
+                return result;
+            })
+            .catch();
+        }
+        return db.collection('products')
+        .updateOne({_id: new mongodb.ObjectId(this._id)},{
+            $set: this
+        } );
+    }
+    static fetchAll(){
+        const db = getDb();
+        return db.collection('products')
+        .find() // it will return cursor which we can iterate to get one document at a time. it will reduce network load as there could be millions of document.
+        .toArray() 
+        .then(products=>products)
+        .catch();
+    }
+    static findById(id) {
+        const db = getDb();
+        return db.collection('products')
+        .find({_id: new mongodb.ObjectId(id)}) // mongodb doesn't know how many documents even though we are providing id filter.
+        .next() // it will return the last document in returned by find.
+        .then(product=>product)
+        .catch();
+    }
+
+    static deleteProduct(id) {
+        const db = getDb();
+        return db.collection('products')
+        .deleteOne({_id: new mongodb.ObjectId(id)});
+    }
+}
+module.exports = Product;
+
+/**
  * Using sequelize to do data operations
  */
 
-const Sequelize = require('sequelize');
+// const Sequelize = require('sequelize');
 
-const sequelize = require('../util/database');
+// const sequelize = require('../util/database');
 
-const Product = sequelize.define('product', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        allowNull: false,
-        primaryKey: true
-    },
-    title: {
-        type: Sequelize.STRING,
-        allowNull: false
-    },
-    price: {
-        type: Sequelize.DOUBLE,
-        allowNull: false
-    },
-    imageURL: {
-        type: Sequelize.STRING,
-        allowNull: false
-    },
-    description: {
-        type: Sequelize.STRING,
-        allowNull: false
-    }
-});
+// const Product = sequelize.define('product', {
+//     id: {
+//         type: Sequelize.INTEGER,
+//         autoIncrement: true,
+//         allowNull: false,
+//         primaryKey: true
+//     },
+//     title: {
+//         type: Sequelize.STRING,
+//         allowNull: false
+//     },
+//     price: {
+//         type: Sequelize.DOUBLE,
+//         allowNull: false
+//     },
+//     imageURL: {
+//         type: Sequelize.STRING,
+//         allowNull: false
+//     },
+//     description: {
+//         type: Sequelize.STRING,
+//         allowNull: false
+//     }
+// });
 
-module.exports = Product;
+// module.exports = Product;
 
 /**
  * Using mysql queries to do data operations

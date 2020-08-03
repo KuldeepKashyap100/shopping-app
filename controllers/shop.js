@@ -1,9 +1,10 @@
 const Product = require("../models/product");
-const Cart = require("../models/cart");
-const Order = require("../models/order");
+const User = require("../models/user");
+// const Cart = require("../models/cart");
+// const Order = require("../models/order");
 
 exports.getProducts = (req, res, next) => {
-  Product.findAll()
+  Product.fetchAll()
     .then((products) => {
       res.render("shop/product-list", {
         products: products,
@@ -32,7 +33,7 @@ exports.getProduct = (req, res, next) => {
 };
 
 exports.getIndex = (req, res, next) => {
-  Product.findAll()
+  Product.fetchAll()
     .then((products) => {
       res.render("shop/index", {
         products: products,
@@ -46,45 +47,125 @@ exports.getIndex = (req, res, next) => {
 };
 
 exports.getCart = (req, res, next) => {
-  req.user
-    .getCart()
-    .then((cart) => {
-      return cart.getProducts();
+  req.user.getCart()
+  .then(products=>{
+    res.render("shop/cart", {
+      path: "/cart",
+      title: "Your Cart",
+      products: products
+    });
+  })
+  /**
+   * by using promise approach
+  const cartItems = req.user.cart.items;
+  const cartProducts = cartItems.map(item => {
+    return Product.findById(item.productId).then(product=>{
+      product.quantity = item.quantity;
+      return product;
     })
-    .then((cartProducts) => {
-      res.render("shop/cart", {
-        path: "/cart",
-        title: "Your Cart",
-        products: cartProducts,
-      });
+  });
+  Promise.all(cartProducts)
+  .then(products=>{
+    res.render("shop/cart", {
+      path: "/cart",
+      title: "Your Cart",
+      products: products
+    });
+  })
+  .catch((err) => {
+    console.log(err);
+  });
+  */
+};
+
+exports.postCart = (req, res, next) => {
+  Product.findById(req.body.id)
+  .then(product=>{
+    return req.user.addToCart(product);
+  })
+  .then(result=>{
+    res.redirect("/cart");
+  })
+  // req.user
+  //   .getCart()
+  //   .then((cart) => {
+  //     fetchedCart = cart;
+  //     return cart.getProducts({ where: { id: id } });
+  //   })
+  //   .then((products) => {
+  //     let product;
+  //     if (products.length > 0) {
+  //       product = products[0];
+  //     }
+  //     if (product) {
+  //       const oldQuantity = product.cartItem.quantity;
+  //       newQuantity = oldQuantity + 1;
+  //       return Promise.resolve(product);
+  //     }
+  //     return Product.findByPk(id);
+  //   })
+  //   .then((product) => {
+  //     return fetchedCart.addProduct(product, {
+  //       through: { quantity: newQuantity },
+  //     });
+  //   })
+  //   .then((result) => {
+  //     res.redirect("/cart");
+  //   })
+  //   .catch((err) => {
+  //     console.log(err);
+  //   });
+
+  // Product.findById(id, (product) => {
+  //   Cart.addProduct(id, product.price);
+  //   res.redirect("/");
+  // });
+};
+
+exports.deleteCartItem = (req, res, next) => {
+  req.user
+    .deleteCartItem(req.body.id)
+    .then((result) => {
+      res.redirect("/cart");
     })
     .catch((err) => {
       console.log(err);
     });
 
-  // Cart.getCart((cart) => {
-  //   Product.fetchAll((products) => {
-  //     const cartProducts = [];
-  //     for (let product of products) {
-  //       const cartProductData = cart.products.find(
-  //         (prod) => prod.id === product.id
-  //       );
-  //       if (cartProductData) {
-  //           cartProducts.push({
-  //           productData: product,
-  //           qty: cartProductData.qty,
-  //         });
-  //       }
-  //     }
-  //     res.render("shop/cart", {
-  //       path: "/cart",
-  //       title: "Your Cart",
-  //       products: cartProducts
-  //     });
-  //   });
+  // Product.findById(id, (product) => {
+  //   Cart.deleteProduct(id, product.price);
+  //   res.redirect("/cart");
   // });
 };
 
+exports.postOrder = (req, res, next) => {
+  let products;
+  let fetchedCart;
+  req.user
+    .addOrder()
+    .then((result) => {
+      res.redirect("/orders");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.getOrders = (req, res, next) => {
+  req.user
+    .getOrders()
+    .then((orders) => {
+      res.render("shop/orders", {
+        path: "/orders",
+        title: "Your Orders",
+        orders: orders,
+      });
+    });
+};
+
+
+/**
+ * used sequelize
 exports.postCart = (req, res, next) => {
   const id = parseInt(req.body.id);
   let fetchedCart;
@@ -203,6 +284,8 @@ exports.getOrders = (req, res, next) => {
       });
     });
 };
+
+*/
 
 // const Product = require("../models/product");
 // const Cart = require("../models/cart");
