@@ -9,6 +9,9 @@ const shopRouter = require("./routes/shop");
 const errorController = require("./controllers/error");
 //import the sequelize object created in database file
 // const sequelize = require("./util/database");
+// const {mongoConnect} = require("./util/database");
+
+const mongoose = require("mongoose");
 
 //import models for assotiation
 // const Product = require("./models/product");
@@ -18,7 +21,6 @@ const User = require("./models/user");
 // const Order = require("./models/order");
 // const OrderItem = require("./models/order-item");
 
-const {mongoConnect} = require("./util/database");
 
 
 const app = express();
@@ -50,9 +52,9 @@ app.use(express.static(path.join(__dirname, "public")));
 // });
 
 app.use((req, res, next) => {
-  User.findById("5f243801bc6f9ffd27ab1cd1")
+  User.findById("5f283922bc6f9ffd27ab1cd2")
   .then(user=>{
-    req.user = new User(user.userName, user.password, user.email, user._id, user.cart);
+    req.user = user;
     next();
   })
 });
@@ -62,9 +64,14 @@ app.use(shopRouter);
 
 app.use(errorController.get404);
 
-mongoConnect((client)=>{
-  console.log(client);
-  app.listen(3000)
+// mongoConnect((client)=>{
+//   console.log(client);
+//   app.listen(3000)
+// });
+
+mongoose.connect("mongodb+srv://root:38AzamslJAZXJ5Tx@cluster0.zgpxi.mongodb.net/shopping-app?retryWrites=true")
+.then(result=>{
+  app.listen(3000);
 });
 
 //sequelize relations

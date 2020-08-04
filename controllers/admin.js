@@ -9,6 +9,99 @@ exports.getAddProduct = (req, res, next) => {
 };
 
 exports.postAddProduct = (req, res, next) => {
+  const product = new Product({
+    title: req.body.title,
+    imageURL: req.body.imageURL,
+    description: req.body.description,
+    price: req.body.price,
+    //mongoos will automatically pick up userId from user object
+    userId: req.user
+  });
+  product.save()
+  .then((results) => {
+    console.log(results);
+    res.redirect("/admin/products");
+  });
+};
+
+exports.getEditProduct = (req, res, next) => {
+  const editMode = req.query.edit === "true" ? true : false;
+  if (!editMode) return res.redirect("/");
+  Product.findById(req.params.id)
+    .then((product) => {
+      if (!product) return res.redirect("/");
+      res.render("admin/edit-product", {
+        title: "Edit Product",
+        path: "/admin/edit-product",
+        editing: editMode,
+        product: product,
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.postEditProduct = (req, res, next) => {
+  const body = req.body;
+  Product.findById(body.id)
+  .then(product=>{
+    product.title = body.title;
+    product.imageURL = body.imageURL;
+    product.description = body.description;
+    product.price = body.price;
+    return product.save();
+  })
+  .then(result=>{
+    if(result)
+      res.redirect("/admin/products");
+  }).catch((err) => {
+      console.log(err);
+  });
+};
+
+exports.deleteProduct = (req, res, next) => {
+  Product.findByIdAndRemove(req.body.id)
+  .then(result=>{
+    if(result)
+      res.redirect("/admin/products");
+  })
+  .catch(err=>{
+      console.log(err);
+  });
+};
+
+exports.getProducts = (req, res, next) => {
+  Product.find()
+  //fetch specific fields by using select method
+  //.select('title price -_id')
+  // poulate will tell mongoose to use _ids present in the object and fetch data for those _ids as well
+  //.populate('userId', 'name email -password')
+  .then((products) => {
+    res.render("admin/products", {
+      products: products,
+      title: "Admin Products",
+      path: "/admin/products",
+    });
+  });
+};
+
+
+
+/**
+ * used mongodb 
+
+const Product = require("../models/product");
+
+exports.getAddProduct = (req, res, next) => {
+  res.render("admin/edit-product", {
+    title: "Add Product",
+    path: "/admin/add-product",
+    editing: false,
+  });
+};
+
+exports.postAddProduct = (req, res, next) => {
   const product = new Product(
     req.body.title,
     req.body.imageURL,
@@ -99,6 +192,8 @@ exports.getProducts = (req, res, next) => {
     });
   });
 };
+
+*/
 
 
 

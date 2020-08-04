@@ -1,6 +1,36 @@
+const mongoose = require('mongoose');
+const { Double } = require('mongodb');
+
+const Schema = mongoose.Schema;
+
+const productSchema = new Schema({
+    title: {
+        type: String,
+        required: true
+    },
+    description: {
+        type: String,
+        required: true
+    },
+    imageURL:{
+        type: String,
+        required: true
+    },
+    price: {
+        type: Number,
+        required: true
+    },
+    userId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    }
+});
+
+module.exports = mongoose.model('Product', productSchema);
+
 /**
  * Using mongoclient to do data operations
- */
 
 const mongodb = new require('mongodb');
 const { getDb } = require("../util/database");
@@ -52,6 +82,8 @@ class Product {
     }
 }
 module.exports = Product;
+
+*/
 
 /**
  * Using sequelize to do data operations

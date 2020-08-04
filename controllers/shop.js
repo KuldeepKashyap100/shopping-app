@@ -1,4 +1,129 @@
 const Product = require("../models/product");
+const Order = require("../models/order");
+
+exports.getProducts = (req, res, next) => {
+  Product.find()
+    .then((products) => {
+      res.render("shop/product-list", {
+        products: products,
+        title: "All Products",
+        path: "/products",
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.getProduct = (req, res, next) => {
+  const id = req.params.id;
+  Product.findById(id)
+    .then((product) => {
+      res.render("shop/product-details", {
+        product: product,
+        title: product.title,
+        path: "/products/" + id,
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.getIndex = (req, res, next) => {
+  Product.find()
+    .then((products) => {
+      res.render("shop/index", {
+        products: products,
+        title: "shop",
+        path: "/",
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.getCart = (req, res, next) => {
+  req.user
+  .populate('cart.items.productId')
+  //populate doesn't return a promise that's why we are calling this function
+  .execPopulate()
+  .then(user=>{
+    const products = user.cart.items;
+    res.render("shop/cart", {
+      path: "/cart",
+      title: "Your Cart",
+      products: products
+    });
+  })
+};
+
+exports.postCart = (req, res, next) => {
+  Product.findById(req.body.id)
+  .then(product=>{
+    return req.user.addToCart(product);
+  })
+  .then(result=>{
+    res.redirect("/cart");
+  })
+};
+
+exports.deleteCartItem = (req, res, next) => {
+  req.user
+    .deleteCartItem(req.body.id)
+    .then((result) => {
+      res.redirect("/cart");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.postOrder = (req, res, next) => {
+  req.user
+  .populate('cart.items.productId')
+  .execPopulate()
+  .then(user=>{
+    const products = user.cart.items.map(item=>{
+      return {quantity: item.quantity, product: {...item.productId}}
+    });
+    const order = new Order({
+      user: {
+        name: req.user.userName,
+        userId: req.user
+      },
+      products: products
+    });
+    return order.save()
+  })
+  .then(()=>{
+    return req.user.clearCart();
+  })
+  .then((result) => {
+    res.redirect("/orders");
+  })
+  .catch((err) => {
+    console.log(err);
+  });
+};
+
+exports.getOrders = (req, res, next) => {
+  Order.find({"user.userId": req.user._id})
+  .then((orders) => {
+    res.render("shop/orders", {
+      path: "/orders",
+      title: "Your Orders",
+      orders: orders,
+    });
+  });
+};
+
+
+/**
+ * used mongodb
+ 
+const Product = require("../models/product");
 const User = require("../models/user");
 // const Cart = require("../models/cart");
 // const Order = require("../models/order");
@@ -55,27 +180,25 @@ exports.getCart = (req, res, next) => {
       products: products
     });
   })
-  /**
-   * by using promise approach
-  const cartItems = req.user.cart.items;
-  const cartProducts = cartItems.map(item => {
-    return Product.findById(item.productId).then(product=>{
-      product.quantity = item.quantity;
-      return product;
-    })
-  });
-  Promise.all(cartProducts)
-  .then(products=>{
-    res.render("shop/cart", {
-      path: "/cart",
-      title: "Your Cart",
-      products: products
-    });
-  })
-  .catch((err) => {
-    console.log(err);
-  });
-  */
+  // by using promise approach
+  // const cartItems = req.user.cart.items;
+  // const cartProducts = cartItems.map(item => {
+  //   return Product.findById(item.productId).then(product=>{
+  //     product.quantity = item.quantity;
+  //     return product;
+  //   })
+  // });
+  // Promise.all(cartProducts)
+  // .then(products=>{
+  //   res.render("shop/cart", {
+  //     path: "/cart",
+  //     title: "Your Cart",
+  //     products: products
+  //   });
+  // })
+  // .catch((err) => {
+  //   console.log(err);
+  // });
 };
 
 exports.postCart = (req, res, next) => {
@@ -163,6 +286,7 @@ exports.getOrders = (req, res, next) => {
     });
 };
 
+*/
 
 /**
  * used sequelize
