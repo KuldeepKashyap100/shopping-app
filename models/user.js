@@ -1,10 +1,11 @@
 const mongoose = require("mongoose");
 const Product = require("./product");
+const { strike } = require("../util/path");
 
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
-  userName: {
+  email: {
     type: String,
     required: true,
   },
@@ -12,10 +13,8 @@ const userSchema = new Schema({
     type: String,
     required: true,
   },
-  email: {
-    type: String,
-    required: true,
-  },
+  resetToken: String,
+  resetTokenExpiration: Date, 
   cart: {
     items: [
       {

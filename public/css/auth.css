@@ -1,0 +1,20 @@
+.login-form{
+    width: 20rem;
+    max-width: 90%;
+    margin:auto;
+    display: block;;
+}
+button{
+    font:inherit;
+    border: 1px solid #ccc;
+    background: white;
+    color:#dbc441;
+    cursor:"pointer";
+    border-radius: 3px;
+    margin:1rem 0;
+}
+button:hover,
+button:active{
+    background-color:#dbc441;
+    color:white
+}

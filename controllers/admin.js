@@ -4,7 +4,7 @@ exports.getAddProduct = (req, res, next) => {
   res.render("admin/edit-product", {
     title: "Add Product",
     path: "/admin/add-product",
-    editing: false,
+    editing: false
   });
 };
 
@@ -29,12 +29,13 @@ exports.getEditProduct = (req, res, next) => {
   if (!editMode) return res.redirect("/");
   Product.findById(req.params.id)
     .then((product) => {
+      if(product.userId.toString() !== req.user._id.toString()) return res.redirect("/products");
       if (!product) return res.redirect("/");
       res.render("admin/edit-product", {
         title: "Edit Product",
         path: "/admin/edit-product",
         editing: editMode,
-        product: product,
+        product: product
       });
     })
     .catch((err) => {
@@ -61,7 +62,7 @@ exports.postEditProduct = (req, res, next) => {
 };
 
 exports.deleteProduct = (req, res, next) => {
-  Product.findByIdAndRemove(req.body.id)
+  Product.deleteOne({_id: req.body.id, userId: req.user._id})
   .then(result=>{
     if(result)
       res.redirect("/admin/products");
@@ -72,7 +73,7 @@ exports.deleteProduct = (req, res, next) => {
 };
 
 exports.getProducts = (req, res, next) => {
-  Product.find()
+  Product.find({userId: req.user._id})
   //fetch specific fields by using select method
   //.select('title price -_id')
   // poulate will tell mongoose to use _ids present in the object and fetch data for those _ids as well
@@ -81,7 +82,7 @@ exports.getProducts = (req, res, next) => {
     res.render("admin/products", {
       products: products,
       title: "Admin Products",
-      path: "/admin/products",
+      path: "/admin/products"
     });
   });
 };
