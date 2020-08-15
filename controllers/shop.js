@@ -1,19 +1,40 @@
+const fs = require('fs');
+const path = require('path');
+
+const PDFDocument = require('pdfkit');
+
 const Product = require("../models/product");
 const Order = require("../models/order");
 
+const ITEMS_PER_PAGE = 2;
+
 exports.getProducts = (req, res, next) => {
-  Product.find()
-    .then((products) => {
-      res.render("shop/product-list", {
-        products: products,
-        title: "All Products",
-        path: "/products",
-        isAuthenticated: req.session.isLoggedIn
-      });
-    })
-    .catch((err) => {
-      console.log(err);
+  const pageNumber = +req.query.page || 1;
+  let totalProductCount;
+  Product.countDocuments()
+  .then(totalProduct=>{
+    totalProductCount = totalProduct;
+    return Product.find()
+            .skip((pageNumber-1)*ITEMS_PER_PAGE)
+            .limit(ITEMS_PER_PAGE);
+  })
+  .then((products) => {
+    res.render("shop/product-list", {
+      products: products,
+      title: "All Products",
+      path: "/products",
+      totalProductCount: totalProductCount,
+      currentPage: pageNumber,
+      previousPage: pageNumber - 1,
+      nextPage: pageNumber + 1,
+      hasPreviousPage: pageNumber > 1,
+      hasNextPage: ITEMS_PER_PAGE * pageNumber < totalProductCount,
+      lastPage: Math.ceil(totalProductCount/ITEMS_PER_PAGE)
     });
+  })
+  .catch((err) => {
+    console.log(err);
+  });
 };
 
 exports.getProduct = (req, res, next) => {
@@ -32,17 +53,32 @@ exports.getProduct = (req, res, next) => {
 };
 
 exports.getIndex = (req, res, next) => {
-  Product.find()
-    .then((products) => {
-      res.render("shop/index", {
-        products: products,
-        title: "shop",
-        path: "/"
-      });
-    })
-    .catch((err) => {
-      console.log(err);
+  const pageNumber = +req.query.page || 1;
+  let totalProductCount;
+  Product.countDocuments()
+  .then(totalProduct=>{
+    totalProductCount = totalProduct;
+    return Product.find()
+            .skip((pageNumber-1)*ITEMS_PER_PAGE)
+            .limit(ITEMS_PER_PAGE);
+  })
+  .then((products) => {
+    res.render("shop/index", {
+      products: products,
+      title: "Shop",
+      path: "/",
+      totalProductCount: totalProductCount,
+      currentPage: pageNumber,
+      previousPage: pageNumber - 1,
+      nextPage: pageNumber + 1,
+      hasPreviousPage: pageNumber > 1,
+      hasNextPage: ITEMS_PER_PAGE * pageNumber < totalProductCount,
+      lastPage: Math.ceil(totalProductCount/ITEMS_PER_PAGE)
     });
+  })
+  .catch((err) => {
+    console.log(err);
+  });
 };
 
 exports.getCart = (req, res, next) => {
@@ -120,6 +156,66 @@ exports.getOrders = (req, res, next) => {
   });
 };
 
+exports.getOrderInvoice = (req, res, next) => {
+  Order.findById(req.params.orderId)
+  .then((order)=>{
+    if(!order) return next(new Error('Invalid Order'));
+    if(order.user.userId.toString() !== req.user._id.toString()) return next(new Error('Unauthorized user'));
+
+    const orderId = req.params.orderId;
+    const invoiceName = 'invoice'+'-'+orderId+'.pdf'
+    const invoicePath = path.join('data', 'invoice', invoiceName);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="'+invoiceName+'"');
+    
+
+    const invoicePDF = new PDFDocument();
+
+    invoicePDF.pipe(fs.createWriteStream(invoicePath));
+    invoicePDF.pipe(res);
+
+    invoicePDF.fontSize(26).text("Invoice", {underline: true});
+    invoicePDF.fontSize(20).text("--------------------------");
+    let totalPrice = 0;
+    order.products.forEach(product => {
+      totalPrice+= product.quantity * product.product.price;
+      invoicePDF.fontSize(14).text(`${product.product.title} - ${product.quantity} x $${product.product.price}`);
+    });
+    invoicePDF.fontSize(20).text("--------------------------");
+    invoicePDF.fontSize(16).text(`Total Price: $${totalPrice}`);
+
+    invoicePDF.end();
+
+
+    // node will read file in chunks
+    //const fileStream = fs.createReadStream(invoicePath);
+    
+    // forward the data that is read in to res, because res object is writable stream.
+    // we can readable streams to pipe their output to writable stream.
+    // and then the response will be streamed to the browser.
+    // and the data will be downloaded by the browser step by step.
+    //fileStream.pipe(res);
+
+    /**
+     * If we read file like this node will read the entire content into the memory.
+     * which will take time to load into memory and it can overflow easily and then
+     * it is sent over the network, instead we should stream this data.
+     fs.readFile(invoicePath, (err, data)=>{
+      if(err){
+        return next(err);
+      }
+      res.setHeader('Content-Type', 'application-pdf');
+      // open pdf in browser
+      // res.setHeader('Content-Disposition', 'inline');
+      // open download popup
+      res.setHeader('Content-Disposition', 'attachment; filename="'+ invoiceName + '"');
+      res.send(data);
+    });
+    */
+  })
+  .catch(err=>next(err));
+};
 
 /**
  * used mongodb

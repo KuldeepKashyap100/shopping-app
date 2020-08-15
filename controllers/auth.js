@@ -28,22 +28,39 @@ exports.getLogin = (req, res, next) => {
     path: "/login",
     title: "Login",
     errorMessage: message,
+    validationErrors: [],
+    oldInput: {
+      email: "",
+      password: ""
+    }
   });
 };
 
 exports.postLogin = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).render("auth/signup", {
+    return res.status(422).render("auth/login", {
       path: "/login",
       title: "Login",
-      errorMessage: errors.array()[0].msg
+      errorMessage: errors.array()[0].msg,
+      validationErrors: errors.array(),
+      oldInput: {
+        email: req.body.email,
+        password: req.body.password
+      }
     });
   }
   User.findOne({ email: req.body.email }).then((user) => {
     if (!user) {
-      req.flash("error", "Invalid email or password.");
-      return res.redirect("/login");
+      return res.status(422).render("auth/login", {
+        path: "/login",
+        title: "Login",
+        errorMessage: "Invalid email or password.",
+        oldInput: {
+          email: req.body.email,
+          password: req.body.password
+        }
+      });
     }
     bcrypt.compare(req.body.password, user.password).then((doMatch) => {
       if (doMatch) {
@@ -57,8 +74,15 @@ exports.postLogin = (req, res, next) => {
           res.redirect("/");
         });
       }
-      req.flash("error", "Invalid email or password.");
-      res.redirect("/login");
+      return res.status(422).render("auth/login", {
+        path: "/login",
+        title: "Login",
+        errorMessage: "Email and password do not match.",
+        oldInput: {
+          email: req.body.email,
+          password: req.body.password
+        }
+      });
     });
   });
 

@@ -64,7 +64,7 @@ form {
 .main-header__item a:hover,
 .main-header__item a:active,
 .main-header__item a.active {
-  color: #ffeb3b;
+  color: #fcfae9;
 }
 
 .grid {
@@ -113,19 +113,22 @@ form {
 .cart__item-list {
   display: flex;
   flex-direction: column;
+  align-items: center;
   width: 100%;
 }
 
 .cart__item {
   display: flex;
   flex-direction: row;
-  width: 60%;
+  width: 50%;
   border: 1px solid #ccc;
-  border-radius: 2px;
+  border-radius: 0.6rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.26);
   box-sizing: border-box;
   /* justify-content: center; */
   list-style-type: none;
+  padding: 0 1rem;
+  border-spacing: 1rem;
 }
 
 .btn{
@@ -241,4 +244,25 @@ main{
 
 .form-control input.invalid {
   border-color: red;
+}
+
+.pagination {
+  text-align: center;
+  margin: 2rem;
+}
+
+.pagination a {
+  text-decoration: none;
+  background-color: white;
+  color: #dbc441;
+  border: 1px solid #dbc441;
+  padding: 0.5rem;
+  margin: 0 1rem;
+}
+
+.pagination a:hover,
+.pagination a:active,
+.pagination a.active {
+  background-color: #dbc441;
+  color: white;
 }

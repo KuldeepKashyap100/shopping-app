@@ -16,7 +16,10 @@
                             <h1 class="product__title"><%=product.title%></h1>
                         </header>
                         <div class="card__image">
-                            <img src="<%= product.imageURL%>" alt="<%=product.title%>"/>
+                            <!-- here / in src is used because we don't want to use current path like `http://localhost:3000/admin/images/kk.JPG`
+                            beacuse images are not /admin/images folder instead we want to use absolute path which starts with `/` and which is
+                            app root folder-->
+                            <img src="/<%= product.imageURL%>" alt="<%=product.title%>"/>
                         </div>
                         <div class="card__content">
                             <h2 class="product__price">$<%=product.price%></h2>

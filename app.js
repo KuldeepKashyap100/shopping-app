@@ -1,12 +1,14 @@
-const path = require('path');
+const path = require("path");
 
-const express = require('express');
-const bodyParser = require('body-parser');
-const session = require('express-session');
-const MongoDBStore = require('connect-mongodb-session')(session);
-const flash = require('connect-flash');
+const express = require("express");
+const bodyParser = require("body-parser");
+const session = require("express-session");
+const MongoDBStore = require("connect-mongodb-session")(session);
+const flash = require("connect-flash");
 // for cross site request forgery
-const csrf = require('csurf')
+const csrf = require("csurf");
+// for file handling
+const multer = require("multer");
 // const expressHbs=require('express-handlebars');
 
 const adminRoutes = require("./routes/admin");
@@ -27,14 +29,36 @@ const User = require("./models/user");
 // const Order = require("./models/order");
 // const OrderItem = require("./models/order-item");
 
-const MONGODB_URI = "mongodb+srv://root:38AzamslJAZXJ5Tx@cluster0.zgpxi.mongodb.net/shopping-app?retryWrites=true";
+// diskstorage is a storage engine
+const fileStorge = multer.diskStorage({
+  destination: (req, file, cb) => {
+    //first arg is err if any
+    cb(null, "images");
+  },
+  filename: (req, file, cb) => {
+    cb(null, new Date().toISOString() + "_" + file.originalname.replace(/\s+/g, ''));
+  },
+});
 
+const fileFilter = (req, file, cb) => {
+  if (
+    file.mimetype === "image/png" ||
+    file.mimetype === "image/jpeg" ||
+    file.mimetype === "image/jpg"
+  ) {
+    return cb(null, true);
+  }
+  cb(null, false);
+};
+
+const MONGODB_URI =
+  "mongodb+srv://root:38AzamslJAZXJ5Tx@cluster0.zgpxi.mongodb.net/shopping-app?retryWrites=true";
 
 const app = express();
 
 const store = new MongoDBStore({
   uri: MONGODB_URI,
-  collection: 'sessions'
+  collection: "sessions",
 });
 
 // fetched the middleware to protect from csrf attack
@@ -58,62 +82,91 @@ app.set("view engine", "ejs");
   app.set('view', 'views')
 */
 
+// this middleware will only parse text form data not files
 app.use(bodyParser.urlencoded({ extended: false }));
+
+// to handle files on the server we use multer
+app.use(multer({ storage: fileStorge, fileFilter: fileFilter }).single("image"));
 
 /**
  * secret : is used for assigning the hash
  * resave : (false) session will not be saved for every request that has been sent. It is saved only if something changed in session
  *  saveUninitialized : (false) ensures that no session saved for the request where it does not needed to be saved.
  * cookie: to configure a cookie.
-*/
-app.use(session({
-  secret: "my secret", 
-  resave: false,
-  saveUninitialized: false,
-  store: store
-  // cookie: {maxAge: , expires:, }
-}));
+ */
+app.use(
+  session({
+    secret: "my secret",
+    resave: false,
+    saveUninitialized: false,
+    store: store,
+    // cookie: {maxAge: , expires:, }
+  })
+);
 
 app.use(csrfProtection);
 
-// add new temporary field to session for only one request.
-app.use(flash());
-
-// to serve the static file stored at public folder
-app.use(express.static(path.join(__dirname, "public")));
-
-
-
 app.use((req, res, next) => {
-  if(!req.session.user)
-    return next();
-  User.findById(req.session.user._id)
-  .then(user=>{
-    req.user = user;
-    next();
-  })
-});
-
-app.use((req, res, next)=>{
   res.locals.isAuthenticated = req.session.isLoggedIn;
   res.locals.csrfToken = req.csrfToken();
   next();
 });
+
+// add new temporary field to session for only one request.
+app.use(flash());
+
+// to tell express serve files from public folder 
+// like `http://localhost:3000/auth.css` we didn't need to append public we exposed all public folder files as if they were on the root folder
+// request to the files in public folder will be automatically handled
+app.use(express.static(path.join(__dirname, "public")));
+
+//here we are serving files statically if the request starts with `/images`
+app.use('/images', express.static(path.join(__dirname, "images")));
+
+app.use((req, res, next) => {
+  // sync error will reach to the error handling middleware
+  // throw new Error('sync error');
+  if (!req.session.user) return next();
+  User.findById(req.session.user._id)
+    .then((user) => {
+      if (!user) return next();
+      req.user = user;
+      next();
+    })
+    .catch((err) => {
+      // async error will not reach to the error handling middleware
+      // so we have manually call next with error
+      // throw new Error('asyn error');
+      next(new Error(err));
+    });
+});
+
 app.use("/admin", adminRoutes.router);
 app.use(shopRoutes);
 app.use(authRoutes);
 
+app.get("/500", errorController.get500);
+
 app.use(errorController.get404);
+
+/**
+ * error handling middleware takes 4 args 1st one is error
+ * when we call next with error arg express will skip all the
+ * middleware and call comes to first error handling middleware
+ * */
+app.use((error, req, res, next) => {
+  console.log(error);
+  res.redirect("/500");
+});
 
 // mongoConnect((client)=>{
 //   console.log(client);
 //   app.listen(3000)
 // });
 
-mongoose.connect(MONGODB_URI)
-.then(result=>{
+mongoose.connect(MONGODB_URI).then((result) => {
   app.listen(3000);
-  console.log("connected!!!")
+  console.log("connected!!!");
 });
 
 /**

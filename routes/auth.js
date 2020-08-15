@@ -7,22 +7,26 @@ const User = require("../models/user");
 const router = express.Router();
 
 router.get("/login", authController.getLogin);
-router.post("/login", authController.postLogin);
 router.post(
-  "/logout",
+  "/login",
   [
-    body("password", "Please enter a valid password")
-      .isLength({ min: 5, max: 9 })
-      .isAlphanumeric(),
+    check("email")
+      .isEmail()
+      .withMessage("Please enter a valid email.")
+      .normalizeEmail()
+      .trim()
   ],
-  authController.postLogout
+  authController.postLogin
 );
+router.post("/logout", authController.postLogout);
 router.get("/signup", authController.getSignUp);
 router.post(
   "/signup",
   [
     check("email")
       .isEmail()
+      .normalizeEmail()
+      .trim()
       .withMessage("Please enter a valid email.")
       .custom((value, { req }) => {
         // if (value === "kk@kk.com")
