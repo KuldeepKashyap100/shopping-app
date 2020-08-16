@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PDFDocument = require('pdfkit');
+const stripe = require('stripe')('sk_test_51HGfbzGLvu84b5vrUectWg5dmDnZgs111ZFFGLN0h6kcQOPdWbJQvrSeRpeSts3rm5K4himDbMP45i2crcgJTEyO00yejWALIj');
 
 const Product = require("../models/product");
 const Order = require("../models/order");
@@ -115,6 +116,69 @@ exports.deleteCartItem = (req, res, next) => {
     .catch((err) => {
       console.log(err);
     });
+};
+
+exports.getCheckout = (req, res, next) => {
+  let products, totalPrice;
+  req.user
+  .populate('cart.items.productId')
+  .execPopulate()
+  .then(user=>{
+    products = user.cart.items;
+    totalPrice = products.reduce((acc, prod) => acc+prod.quantity*prod.productId.price, 0);
+
+    return stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: products.map((product)=>{
+        return {
+          name: product.productId.title,
+          description: product.productId.description,
+          amount: product.productId.price * 100,
+          currency: 'usd',
+          quantity: product.quantity
+        };
+      }),
+      success_url: req.protocol + '://' + req.get('host') + '/checkout/success',
+      cancel_url: req.protocol + '://' + req.get('host') + '/checkout/cancel'
+    });
+  })
+  .then((session)=>{
+    res.render("shop/checkout", {
+      path: "/checkout",
+      title: "Checkout",
+      products: products,
+      totalPrice: totalPrice,
+      sessionId: session.id
+    });
+  })
+};
+
+exports.getCheckoutSuccess = (req, res, next) => {
+  req.user
+  .populate('cart.items.productId')
+  .execPopulate()
+  .then(user=>{
+    const products = user.cart.items.map(item=>{
+      return {quantity: item.quantity, product: {...item.productId}}
+    });
+    const order = new Order({
+      user: {
+        email: req.user.email,
+        userId: req.user
+      },
+      products: products
+    });
+    return order.save()
+  })
+  .then(()=>{
+    return req.user.clearCart();
+  })
+  .then((result) => {
+    res.redirect("/orders");
+  })
+  .catch((err) => {
+    console.log(err);
+  });
 };
 
 exports.postOrder = (req, res, next) => {
