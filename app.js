@@ -1,4 +1,5 @@
 const path = require("path");
+const https = require("https");
 
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -9,6 +10,9 @@ const flash = require("connect-flash");
 const csrf = require("csurf");
 // for file handling
 const multer = require("multer");
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
 // const expressHbs=require('express-handlebars');
 
 const adminRoutes = require("./routes/admin");
@@ -24,10 +28,15 @@ const mongoose = require("mongoose");
 // import models for assotiation
 // const Product = require("./models/product");
 const User = require("./models/user");
+const  fs = require("fs");
 // const Cart = require("./models/cart");
 // const CartItem = require("./models/cart-item");
 // const Order = require("./models/order");
 // const OrderItem = require("./models/order-item");
+
+//it is special environment var, not set by default because used by express to detect the environment mode
+//if set to production express will change certain things like it will reduce the details of errors it throws and optimise some things for deployment
+console.log(process.env.NODE_ENV);
 
 // diskstorage is a storage engine
 const fileStorge = multer.diskStorage({
@@ -52,7 +61,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 const MONGODB_URI =
-  "mongodb+srv://root:38AzamslJAZXJ5Tx@cluster0.zgpxi.mongodb.net/shopping-app?retryWrites=true";
+  `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.zgpxi.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true`;
 
 const app = express();
 
@@ -103,8 +112,17 @@ app.use(
     // cookie: {maxAge: , expires:, }
   })
 );
-
 app.use(csrfProtection);
+
+// this package will add certain headers to the response to protect it from certain attack patterns and security issues
+app.use(helmet());
+//this package will compress the resourses
+app.use(compression());
+// to log data on console
+const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
+app.use(morgan('tiny', {stream: accessLogStream}));
+
+
 
 app.use((req, res, next) => {
   res.locals.isAuthenticated = req.session.isLoggedIn;
@@ -164,11 +182,17 @@ app.use((error, req, res, next) => {
 //   app.listen(3000)
 // });
 
+
+// const privateKey = fs.readFileSync("server.key");
+// const certificate = fs.readFileSync("server.cert");
+
+
 mongoose.connect(MONGODB_URI).then((result) => {
-  app.listen(3000);
+  
+  // https.createServer({key: privateKey, cert: certificate},app).listen(process.env.PORT || 3000);
+  app.listen(process.env.PORT || 3000);
   console.log("connected!!!");
 });
-
 /**
  * sequelize relations
   app.use((req, res, next) => {

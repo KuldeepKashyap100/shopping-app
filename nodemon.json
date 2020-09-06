@@ -1,0 +1,8 @@
+{
+    "env": {
+        "MONGO_USER": "root",
+        "MONGO_PASSWORD": "38AzamslJAZXJ5Tx",
+        "MONGO_DEFAULT_DATABASE": "shopping-app",
+        "STRIPE_KEY": "sk_test_51HGfbzGLvu84b5vrUectWg5dmDnZgs111ZFFGLN0h6kcQOPdWbJQvrSeRpeSts3rm5K4himDbMP45i2crcgJTEyO00yejWALIj"
+    }
+}
